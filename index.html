@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>विद्यार्थी परीक्षा परिणाम</title>
+  <style>
+    body {
+      font-family: 'Mangal', sans-serif;
+      background: linear-gradient(to right, #e0f7fa, #fff);
+      padding: 20px;
+      margin: 0;
+    }
+
+    h2, h3 {
+      color: #004d40;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    #inputSection {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+      width: 250px;
+      padding: 10px;
+      font-size: 18px;
+      border: 2px solid #26a69a;
+      border-radius: 5px;
+      margin-right: 10px;
+      transition: all 0.3s ease;
+    }
+
+    input.error {
+      border-color: red;
+      animation: shake 0.3s;
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: #00796b;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #004d40;
+    }
+
+    .print-btn {
+      display: none;
+      margin: 20px auto;
+      background-color: #33691e;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      border: 1px solid #bbb;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    th {
+      background-color: #80cbc4;
+      color: #00332c;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f1f8e9;
+    }
+
+    #result {
+      background-color: #ffffff;
+      padding: 20px;
+      margin-top: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .division {
+      padding: 10px;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+
+    .first { background-color: #a5d6a7; color: #1b5e20; }
+    .second { background-color: #ffe082; color: #e65100; }
+    .third { background-color: #ffab91; color: #bf360c; }
+    .fail { background-color: #ef9a9a; color: #b71c1c; }
+    .supplementary { background-color: #d1c4e9; color: #4a148c; }
+
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 14px;
+      }
+      input[type="text"] {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>शासकीय उ.मा.वि. गोरखपुर, जिला - नरसिंहपुर</h2>
+  <h2>तिमाही परीक्षा का रिजल्ट देखने के लिए रोल नंबर दर्ज करें</h2>
+  <div id="inputSection">
+    <input type="text" id="rollInput" placeholder="रोल नंबर दर्ज करें">
+    <button onclick="getResult()">परीक्षा परिणाम देखें</button>
+  </div>
+
+  <div id="result"></div>
+  <div style="text-align:center">
+    <button class="print-btn" onclick="window.print()">🖨️ प्रिंट / PDF डाउनलोड</button>
+  </div>
+
+  <script>
+    function getResult() {
+      const rollInput = document.getElementById("rollInput");
+      const roll = rollInput.value.trim();
+      if (!roll) {
+        rollInput.classList.add("error");
+        setTimeout(() => rollInput.classList.remove("error"), 500);
+        return;
+      }
+
+      const url = "https://script.google.com/macros/s/AKfycbyew0N89-t6qeic8gmdA-CZhLFGvzWXHojn68pdskhMweA53gkYEtS9WUisvf1ERxeoIA/exec?roll=" + roll;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (!data || data === "Roll number not found") {
+            document.getElementById("result").innerHTML = "<p>रोल नंबर नहीं मिला।</p>";
+            return;
+          }
+
+          let html = `
+            <h3>विद्यार्थी विवरण</h3>
+            <p><strong>नाम:</strong> ${data.Name}</p>
+            <p><strong>पिता का नाम:</strong> ${data.Father}</p>
+            <p><strong>जन्म तिथि:</strong> ${data.DOB}</p>
+            <p><strong>कक्षा:</strong> ${data.Class}</p>
+          `;
+
+          const subjectMap = {};
+          for (let key in data) {
+            if (key.endsWith(" T") || key.endsWith(" P")) {
+              const subject = key.slice(0, -2).trim();
+              if (!subjectMap[subject]) subjectMap[subject] = { theory: 0, practical: 0 };
+              if (key.endsWith(" T")) subjectMap[subject].theory = parseInt(data[key] || 0);
+              if (key.endsWith(" P")) subjectMap[subject].practical = parseInt(data[key] || 0);
+            }
+          }
+
+          html += `<table><tr><th>विषय</th><th>थ्योरी अंक</th><th>प्रैक्टिकल अंक</th><th>कुल अंक</th></tr>`;
+
+          let grandTotal = 0;
+          let theoryFailCount = 0;
+          let totalSubjects = 0;
+          const classNum = parseInt(data.Class);
+
+          const theoryMaxMarks = {
+            "Hindi": 80, "English": 80, "Sanskrit": 80, "Maths": 80,
+            "Science": 75, "Social_Science": 80, "IT": 40, "AG": 40,
+            "Biology": 70, "Physics": 70, "Chemistry": 70,
+            "History": 80, "PolSc": 80, "Geo": 70
+          };
+
+          for (let subject in subjectMap) {
+            const theory = subjectMap[subject].theory;
+            const practical = subjectMap[subject].practical;
+            const total = theory + practical;
+
+            if (theory === 0 && practical === 0) continue;
+
+            html += `<tr><td>${subject}</td><td>${theory}</td><td>${practical}</td><td>${total}</td></tr>`;
+            grandTotal += total;
+            totalSubjects++;
+
+            const maxMarks = theoryMaxMarks[subject] || 80;
+            const theoryPercent = (theory / maxMarks) * 100;
+            if (theoryPercent < 33) theoryFailCount++;
+          }
+
+          html += `</table>`;
+
+          let percentage = (grandTotal / (totalSubjects * 100)) * 100;
+          percentage = percentage.toFixed(2);
+
+          let division = "अनुत्तीर्ण", divisionClass = "fail";
+          if (classNum <= 10) {
+            if (theoryFailCount > 2) division = "अनुत्तीर्ण";
+            else if (theoryFailCount === 2) { division = "सप्लीमेंट्री"; divisionClass = "supplementary"; }
+            else if (percentage >= 60) { division = "प्रथम"; divisionClass = "first"; }
+            else if (percentage >= 45) { division = "द्वितीय"; divisionClass = "second"; }
+            else if (percentage >= 33) { division = "तृतीय"; divisionClass = "third"; }
+          } else {
+            if (theoryFailCount > 1) division = "अनुत्तीर्ण";
+            else if (theoryFailCount === 1) { division = "सप्लीमेंट्री"; divisionClass = "supplementary"; }
+            else if (percentage >= 60) { division = "प्रथम"; divisionClass = "first"; }
+            else if (percentage >= 45) { division = "द्वितीय"; divisionClass = "second"; }
+            else if (percentage >= 33) { division = "तृतीय"; divisionClass = "third"; }
+          }
+
+          html += `
+            <h3>कुल प्राप्तांक: ${grandTotal}</h3>
+            <h3>प्रतिशत: ${percentage} %</h3>
+            <div class="division ${divisionClass}">श्रेणी: ${division}</div>
+          `;
+
+          document.getElementById("result").innerHTML = html;
+          document.querySelector(".print-btn").style.display = "inline-block";
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById("result").innerHTML = "<p>कृपया रोल नंबर की जॉच करें।</p>";
+        });
+    }
+  </script>
+
+<footer style="text-align: center; margin-top: 30px; padding: 15px; background-color: #f0f0f0; font-size: 15px; color: #444;">
+    <div style="font-size: 18px; color: #388e3c; font-weight: bold;">✦ {U.C.D.} ✦</div>
+    © 2025 शासकीय उ.मा.वि. गोरखपुर, जिला - नरसिंहपुर (म.प्र.) | Developed & Maintained by Uttam Chand Dehriya (Vocational Trainer - I.T.)
+</footer>
+
+
+<script>
+  // Right-click disable
+  document.addEventListener('contextmenu', e => e.preventDefault());
+
+  // Text selection disable
+  document.addEventListener('selectstart', e => e.preventDefault());
+
+  // Keyboard shortcut block (Ctrl+U, Ctrl+C, Ctrl+S, Ctrl+A)
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && ['u', 'c', 's', 'a'].includes(e.key.toLowerCase())) {
+      e.preventDefault();
+    }
+  });
+
+  // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C disable
+  document.onkeydown = function (e) {
+    if (e.keyCode === 123 || 
+        (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase()))) {
+      return false;
+    }
+  };
+</script>
+
+</body>
+</html>
