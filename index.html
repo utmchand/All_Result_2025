@@ -119,11 +119,12 @@
         margin-bottom: 10px;
       }
     }
+    
   </style>
 </head>
 <body>
   <h2>शासकीय उ.मा.वि. गोरखपुर, जिला - नरसिंहपुर</h2>
-  <h2>तिमाही परीक्षा 2025 का रिजल्ट देखने के लिए रोल नंबर दर्ज करें</h2>
+  <h2>तिमाही परीक्षा 2025 का परीक्षा परिणाम देखने के लिए रोल नंबर दर्ज करें</h2>
   <div id="inputSection">
     <input type="text" id="rollInput" placeholder="रोल नंबर दर्ज करें">
     <button onclick="getResult()">परीक्षा परिणाम देखें</button>
@@ -181,7 +182,7 @@
 
           const theoryMaxMarks = {
             "Hindi": 80, "English": 80, "Sanskrit": 80, "Maths": 80,
-            "Science": 75, "Social_Science": 80, "IT": 40, "AG": 40,
+            "Science": 75, "Social_Science": 80, "IT": 50, "AG": 50,
             "Biology": 70, "Physics": 70, "Chemistry": 70,
             "History": 80, "PolSc": 80, "Geo": 70
           };
@@ -197,10 +198,29 @@
             grandTotal += total;
             totalSubjects++;
 
-            const maxMarks = theoryMaxMarks[subject] || 80;
-            const theoryPercent = (theory / maxMarks) * 100;
-            if (theoryPercent < 33) theoryFailCount++;
-          }
+            // ---- Passing Rule ----
+            if (classNum >= 11) {
+              if (subject === "IT" || subject === "AG") {
+                if (theory < 17 || practical < 17) theoryFailCount++;
+              } else if (subject === "Geo") {
+                if (theory < 23 || practical < 10) theoryFailCount++;
+                } else if (subject === "Biology") {
+                  if (theory < 23 || practical < 10) theoryFailCount++;
+              } else if (subject === "Physics") {
+            if (theory < 23 || practical < 10) theoryFailCount++;
+  } else if (subject === "Chemistry") {
+    if (theory < 23 || practical < 10) theoryFailCount++;
+  } else {
+    const maxMarks = theoryMaxMarks[subject] || 80;
+    const theoryPercent = (theory / maxMarks) * 100;
+    if (theoryPercent < 33) theoryFailCount++;
+  }
+} else {
+  const maxMarks = theoryMaxMarks[subject] || 80;
+  const theoryPercent = (theory / maxMarks) * 100;
+  if (theoryPercent < 33) theoryFailCount++;
+}
+}
 
           html += `</table>`;
 
@@ -238,7 +258,6 @@
     }
   </script>
 
-
 <script>
   // Right-click disable
   document.addEventListener('contextmenu', e => e.preventDefault());
@@ -266,8 +285,6 @@
     <div style="font-size: 18px; color: #388e3c; font-weight: bold;">✦ {U.C.D.} ✦</div>
     © 2025 शासकीय उ.मा.वि. गोरखपुर, जिला - नरसिंहपुर (म.प्र.) | Developed & Maintained by Uttam Chand Dehriya (Vocational Trainer - I.T.)
 </footer>
-
-
 
 </body>
 </html>
