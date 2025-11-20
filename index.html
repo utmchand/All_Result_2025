@@ -119,12 +119,11 @@
         margin-bottom: 10px;
       }
     }
-    
   </style>
 </head>
 <body>
   <h2>शासकीय उ.मा.वि. गोरखपुर, जिला - नरसिंहपुर</h2>
-  <h2>तिमाही परीक्षा 2025 का परीक्षा परिणाम देखने के लिए रोल नंबर दर्ज करें</h2>
+  <h2>छ:माही परीक्षा 2025 का परीक्षा परिणाम देखने के लिए रोल नंबर दर्ज करें</h2>
   <div id="inputSection">
     <input type="text" id="rollInput" placeholder="रोल नंबर दर्ज करें">
     <button onclick="getResult()">परीक्षा परिणाम देखें</button>
@@ -136,6 +135,19 @@
   </div>
 
   <script>
+    function normalizeClass(raw) {
+      if (!raw && raw !== 0) return "";
+      raw = String(raw).trim().toLowerCase();
+      if (/^9\b|9(थी|वीं|th)/.test(raw) || raw.includes("9")) return 9;
+      if (/^10\b|10(थी|वीं|th)/.test(raw) || raw.includes("10")) return 10;
+      if (/^11\b|11(थी|वीं|th)/.test(raw) || raw.includes("11")) return 11;
+      if (/^12\b|12(थी|वीं|th)/.test(raw) || raw.includes("12")) return 12;
+      // fallback to parseInt
+      const n = parseInt(raw);
+      if ([9,10,11,12].includes(n)) return n;
+      return raw;
+    }
+
     function getResult() {
       const rollInput = document.getElementById("rollInput");
       const roll = rollInput.value.trim();
@@ -145,7 +157,7 @@
         return;
       }
 
-      const url = "https://script.google.com/macros/s/AKfycbyew0N89-t6qeic8gmdA-CZhLFGvzWXHojn68pdskhMweA53gkYEtS9WUisvf1ERxeoIA/exec?roll=" + roll;
+      const url = "https://script.google.com/macros/s/AKfycbyew0N89-t6qeic8gmdA-CZhLFGvzWXHojn68pdskhMweA53gkYEtS9WUisvf1ERxeoIA/exec?roll=" + encodeURIComponent(roll);
 
       fetch(url)
         .then(res => res.json())
@@ -155,98 +167,188 @@
             return;
           }
 
+          // show basic student details
           let html = `
-            <h2>तिमाही परीक्षा 2025 की अंकसूची</h2><h3>विद्यार्थी विवरण</h3>
-            <p><strong>नाम:</strong> ${data.Name}</p>
-            <p><strong>पिता का नाम:</strong> ${data.Father}</p>
-            <p><strong>जन्म तिथि:</strong> ${data.DOB}</p>
-            <p><strong>कक्षा:</strong> ${data.Class}</p>
+            <h2>छ:माही परीक्षा 2025 की अंकसूची</h2><h3>विद्यार्थी विवरण</h3>
+            <p><strong>नाम:</strong> ${data.Name || ""}</p>
+            <p><strong>पिता का नाम:</strong> ${data.Father || ""}</p>
+            <p><strong>जन्म तिथि:</strong> ${data.DOB || ""}</p>
+            <p><strong>कक्षा:</strong> ${data.Class || ""}</p>
           `;
 
+          // collect subjects from returned JSON (keys like "Hindi T", "Hindi P")
           const subjectMap = {};
           for (let key in data) {
             if (key.endsWith(" T") || key.endsWith(" P")) {
               const subject = key.slice(0, -2).trim();
               if (!subjectMap[subject]) subjectMap[subject] = { theory: 0, practical: 0 };
-              if (key.endsWith(" T")) subjectMap[subject].theory = parseInt(data[key] || 0);
-              if (key.endsWith(" P")) subjectMap[subject].practical = parseInt(data[key] || 0);
+              if (key.endsWith(" T")) subjectMap[subject].theory = Number(data[key]) || 0;
+              if (key.endsWith(" P")) subjectMap[subject].practical = Number(data[key]) || 0;
             }
           }
 
           html += `<table><tr><th>विषय</th><th>थ्योरी अंक</th><th>प्रैक्टिकल अंक</th><th>कुल अंक</th></tr>`;
 
-          let grandTotal = 0;
-          let theoryFailCount = 0;
-          let totalSubjects = 0;
-          const classNum = parseInt(data.Class);
-
-          const theoryMaxMarks = {
-            "Hindi": 80, "English": 80, "Sanskrit": 80, "Maths": 80,
-            "Science": 75, "Social_Science": 80, "IT": 50, "AG": 50,
-            "Biology": 70, "Physics": 70, "Chemistry": 70,
-            "History": 80, "PolSc": 80, "Geo": 70
+          // Passing rules explicit per class & subject (as you specified)
+          const passingRules = {
+            "9-10": {
+              "Hindi": { theory: 25, practical: 8, tMax:75, pMax:25 },
+              "English": { theory: 25, practical: 8, tMax:75, pMax:25 },
+              "Sanskrit": { theory: 25, practical: 8, tMax:75, pMax:25 },
+              "Maths": { theory: 25, practical: 8, tMax:75, pMax:25 },
+              "Science": { theory: 25, practical: 8, tMax:75, pMax:25 },
+              "Social_Science": { theory: 25, practical: 8, tMax:75, pMax:25 },
+              "IT": { theory: 14, practical: 20, tMax:40, pMax:60 },
+              "AG": { theory: 14, practical: 20, tMax:40, pMax:60 }
+              
+            },
+            "11-12": {
+              "Hindi": { theory: 27, practical: 7, tMax:80, pMax:20 },
+              "English": { theory: 27, practical: 7, tMax:80, pMax:20 },
+              "History": { theory: 27, practical: 7, tMax:80, pMax:20 },
+              "PolSc": { theory: 27, practical: 7, tMax:80, pMax:20 },
+              "Maths": { theory: 27, practical: 7, tMax:80, pMax:20 },
+              "Geo": { theory: 23, practical: 10, tMax:70, pMax:30 },
+              "Biology": { theory: 23, practical: 10, tMax:70, pMax:30 },
+              "Physics": { theory: 23, practical: 10, tMax:70, pMax:30 },
+              "Chemistry": { theory: 23, practical: 10, tMax:70, pMax:30 },
+              "IT": { theory: 17, practical: 17, tMax:50, pMax:50 },
+              "AG": { theory: 17, practical: 17, tMax:50, pMax:50 }
+            }
           };
 
+          // default maxima if subject not in map
+          const defaultMax = { tMax: 80, pMax: 20 };
+
+          let grandTotal = 0;
+          let failCount = 0;
+          let totalSubjects = 0;
+          const rawClass = data.Class;
+          const classNum = normalizeClass(rawClass);
+
+          // to collect supplementary subject names
+          const supplementarySubjects = [];
+
+          // iterate subjects
           for (let subject in subjectMap) {
-            const theory = subjectMap[subject].theory;
-            const practical = subjectMap[subject].practical;
+            const theory = Number(subjectMap[subject].theory) || 0;
+            const practical = Number(subjectMap[subject].practical) || 0;
             const total = theory + practical;
 
+            // skip empty subjects
             if (theory === 0 && practical === 0) continue;
 
             html += `<tr><td>${subject}</td><td>${theory}</td><td>${practical}</td><td>${total}</td></tr>`;
             grandTotal += total;
             totalSubjects++;
 
-            // ---- Passing Rule ----
-            if (classNum >= 11) {
-              if (subject === "IT" || subject === "AG") {
-                if (theory < 17 || practical < 17) theoryFailCount++;
-              } else if (subject === "Geo") {
-                if (theory < 23 || practical < 10) theoryFailCount++;
-                } else if (subject === "Biology") {
-                  if (theory < 23 || practical < 10) theoryFailCount++;
-              } else if (subject === "Physics") {
-            if (theory < 23 || practical < 10) theoryFailCount++;
-  } else if (subject === "Chemistry") {
-    if (theory < 23 || practical < 10) theoryFailCount++;
-  } else {
-    const maxMarks = theoryMaxMarks[subject] || 80;
-    const theoryPercent = (theory / maxMarks) * 100;
-    if (theoryPercent < 33) theoryFailCount++;
-  }
-} else {
-  const maxMarks = theoryMaxMarks[subject] || 80;
-  const theoryPercent = (theory / maxMarks) * 100;
-  if (theoryPercent < 33) theoryFailCount++;
-}
-}
+            // determine pass thresholds for this subject given the class
+            let threshold = null;
+            if (classNum === 9 || classNum === 10) {
+              threshold = passingRules["9-10"][subject] || null;
+            } else if (classNum === 11 || classNum === 12) {
+              threshold = passingRules["11-12"][subject] || null;
+            } else {
+              // unknown class — apply default 33% on generic maxima
+              threshold = null;
+            }
+
+            let isFail = false;
+
+            if (threshold) {
+              // use explicit thresholds (both theory and practical must meet)
+              const reqTheory = Number(threshold.theory);
+              const reqPractical = Number(threshold.practical);
+              if (theory < reqTheory || practical < reqPractical) {
+                isFail = true;
+              }
+            } else {
+              // fallback: use 33% of maxima
+              const tMax = (classNum >= 11 && passingRules["11-12"][subject] && passingRules["11-12"][subject].tMax) ||
+                           (classNum <= 10 && passingRules["9-10"][subject] && passingRules["9-10"][subject].tMax) ||
+                           defaultMax.tMax;
+              const pMax = (classNum >= 11 && passingRules["11-12"][subject] && passingRules["11-12"][subject].pMax) ||
+                           (classNum <= 10 && passingRules["9-10"][subject] && passingRules["9-10"][subject].pMax) ||
+                           defaultMax.pMax;
+
+              const reqTheory = Math.ceil(tMax * 0.33);
+              const reqPractical = Math.ceil(pMax * 0.33);
+              if (theory < reqTheory || practical < reqPractical) {
+                isFail = true;
+              }
+            }
+
+            if (isFail) {
+              failCount++;
+              // record the subject name for supplementary listing (only if it is considered fail)
+              supplementarySubjects.push(subject);
+            }
+          } // end for subjects
 
           html += `</table>`;
 
-          let percentage = (grandTotal / (totalSubjects * 100)) * 100;
-          percentage = percentage.toFixed(2);
-
-          let division = "अनुत्तीर्ण", divisionClass = "fail";
-          if (classNum <= 10) {
-            if (theoryFailCount > 2) division = "अनुत्तीर्ण";
-            else if (theoryFailCount === 2) { division = "सप्लीमेंट्री"; divisionClass = "supplementary"; }
-            else if (percentage >= 60) { division = "प्रथम"; divisionClass = "first"; }
-            else if (percentage >= 45) { division = "द्वितीय"; divisionClass = "second"; }
-            else if (percentage >= 33) { division = "तृतीय"; divisionClass = "third"; }
-          } else {
-            if (theoryFailCount > 1) division = "अनुत्तीर्ण";
-            else if (theoryFailCount === 1) { division = "सप्लीमेंट्री"; divisionClass = "supplementary"; }
-            else if (percentage >= 60) { division = "प्रथम"; divisionClass = "first"; }
-            else if (percentage >= 45) { division = "द्वितीय"; divisionClass = "second"; }
-            else if (percentage >= 33) { division = "तृतीय"; divisionClass = "third"; }
+          // compute percentage: use totalSubjects * 100 as denominator (each subject total assumed 100)
+          // (You already used this approach earlier; kept same for compatibility)
+          let percentage = 0;
+          if (totalSubjects > 0) {
+            percentage = (grandTotal / (totalSubjects * 100)) * 100;
+            percentage = Number(percentage.toFixed(2));
           }
 
+          // Decide division/result according to rules given
+          let division = "अनुत्तीर्ण", divisionClass = "fail";
+          if (classNum === 9 || classNum === 10) {
+            // 9-10 rules: 0 or 1 fail -> PASS, 2 -> SUPPLEMENTARY, >=3 -> FAIL
+            if (failCount >= 3) {
+              division = "अनुत्तीर्ण"; divisionClass = "fail";
+            } else if (failCount === 2) {
+              division = "सप्लीमेंट्री"; divisionClass = "supplementary";
+            } else {
+              // 0 or 1 fails -> PASS (but still determine division by percentage if 0 fails)
+              if (failCount === 0) {
+                if (percentage >= 60) { division = "प्रथम"; divisionClass = "first"; }
+                else if (percentage >= 45) { division = "द्वितीय"; divisionClass = "second"; }
+                else if (percentage >= 33) { division = "तृतीय"; divisionClass = "third"; }
+                else { division = "अनुत्तीर्ण"; divisionClass = "fail"; } // edge case: total%<33
+              } else {
+                // 1 fail => PASS by your rule (show as PASS)
+                division = "उत्तीर्ण"; divisionClass = "first";
+              }
+            }
+          } else if (classNum === 11 || classNum === 12) {
+            // 11-12 rules: 0 -> PASS, 1 -> SUPPLEMENTARY, >=2 -> FAIL
+            if (failCount >= 2) {
+              division = "अनुत्तीर्ण"; divisionClass = "fail";
+            } else if (failCount === 1) {
+              division = "सप्लीमेंट्री"; divisionClass = "supplementary";
+            } else {
+              // failCount === 0
+              if (percentage >= 60) { division = "प्रथम"; divisionClass = "first"; }
+              else if (percentage >= 45) { division = "द्वितीय"; divisionClass = "second"; }
+              else if (percentage >= 33) { division = "तृतीय"; divisionClass = "third"; }
+              else { division = "अनुत्तीर्ण"; divisionClass = "fail"; } // edge case
+            }
+          } else {
+            // unknown class fallback
+            division = (failCount === 0) ? "उत्तीर्ण" : (failCount === 1 ? "सप्लीमेंट्री" : "अनुत्तीर्ण");
+            divisionClass = (division === "उत्तीर्ण") ? "first" : (division === "सप्लीमेंट्री" ? "supplementary" : "fail");
+          }
+
+          // Build final display with supplementary subjects if any
           html += `
             <h3>कुल प्राप्तांक: ${grandTotal}</h3>
             <h3>प्रतिशत: ${percentage} %</h3>
-            <div class="division ${divisionClass}">श्रेणी: ${division}</div>
           `;
+
+          if (division === "सप्लीमेंट्री") {
+            // show which subjects (but within the rule behavior)
+            html += `<div class="division ${divisionClass}">श्रेणी: ${division}</div>`;
+            if (supplementarySubjects.length > 0) {
+              html += `<p style="text-align:center; font-weight:bold; margin-top:10px;">सप्लीमेंट्री विषय: ${supplementarySubjects.join(", ")}</p>`;
+            }
+          } else {
+            html += `<div class="division ${divisionClass}">श्रेणी: ${division}</div>`;
+          }
 
           document.getElementById("result").innerHTML = html;
           document.querySelector(".print-btn").style.display = "inline-block";
@@ -274,7 +376,7 @@
 
   // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C disable
   document.onkeydown = function (e) {
-    if (e.keyCode === 123 || 
+    if (e.keyCode === 123 ||
         (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase()))) {
       return false;
     }
